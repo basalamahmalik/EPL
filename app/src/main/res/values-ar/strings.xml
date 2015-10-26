@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EPL</string>
+    <string name="action_refresh">تحديث</string>
+    <string name="action_settings">إعدادات</string>
+    <string name="error">خطأ</string>
+    <string name="no_data">لاتوجد بيانات، الرجاء الضغط على زر تحديث اعلاه</string>
+    <string name="ok">موافق</string>
+    <string name="internet_settings">إعدادات الإنترنت</string>
+    <string name="internet_state">يجب عليك تفعيل الاتصال بالانترنت</string>
+    <string name="fixture">المباريات</string>
+    <string name="standing">جدول الترتيب</string>
+
+
+</resources>
