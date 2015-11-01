@@ -1,5 +1,6 @@
 package epl.app.net.basalamah.malik.epl_1.Fragments;
 
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,7 +10,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
-import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -26,13 +27,21 @@ import android.widget.ArrayAdapter;
 import android.widget.ExpandableListView;
 import android.widget.Toast;
 
-import com.facebook.share.model.ShareContent;
-import com.facebook.share.model.ShareLinkContent;
+import com.facebook.AccessToken;
+import com.facebook.AccessTokenTracker;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.GraphRequest;
+import com.facebook.GraphResponse;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
 import com.facebook.share.widget.ShareDialog;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,6 +49,7 @@ import java.util.List;
 
 import epl.app.net.basalamah.malik.epl_1.Adapters.MatchesListAdapter;
 import epl.app.net.basalamah.malik.epl_1.AppConstants;
+import epl.app.net.basalamah.malik.epl_1.EPLApplication;
 import epl.app.net.basalamah.malik.epl_1.MainActivity;
 import epl.app.net.basalamah.malik.epl_1.MatchData.Match;
 import epl.app.net.basalamah.malik.epl_1.MatchData.MatchData;
@@ -62,10 +72,11 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
     List<Match> listDataHeader = new ArrayList<>();
     HashMap<Match, List<MatchEvent>> listDataChild = new HashMap<>();
     ShareDialog shareDialog;
-
-
-
-
+    private LoginButton loginButton;
+    private CallbackManager callbackManager;
+    String token;
+    AccessTokenTracker accessTokenTracker;
+    Boolean loggedIn = false;
 
     private BroadcastReceiver internet = new BroadcastReceiver() {
         @Override
@@ -83,8 +94,15 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         setHasOptionsMenu(true);
         context = getActivity().getApplicationContext();
         shareDialog = new ShareDialog(this);
+        callbackManager = CallbackManager.Factory.create();
 
-
+        accessTokenTracker = new AccessTokenTracker() {
+            @Override
+            protected void onCurrentAccessTokenChanged(AccessToken oldAccessToken, AccessToken newAccessToken) {
+                updateWithToken(newAccessToken);
+            }
+        };
+        updateWithToken(AccessToken.getCurrentAccessToken());
     }
 
     @Override
@@ -126,20 +144,22 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
 
              */
             swipeRefreshLayout.post(new Runnable() {
-                                        @Override
-                                        public void run() {swipeRefreshLayout.setRefreshing(true);}
-                                    });
+                @Override
+                public void run() {
+                    swipeRefreshLayout.setRefreshing(true);
+                }
+            });
 
             expListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-                    String names[] ={"Share"};
+                    String names[] = {"Share","Share on Facebook"};
                     AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
                     LayoutInflater inflater = getActivity().getLayoutInflater();
                     View convertView = (View) inflater.inflate(android.R.layout.simple_list_item_1, null);
                     alertDialog.setView(convertView);
                     alertDialog.setTitle("List");
-                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(context,R.layout.dialog_list_text,names);
+                    ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, R.layout.dialog_list_text, names);
                     alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
@@ -150,70 +170,96 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
                     alertDialog.setAdapter(adapter, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            Share(position);
+
+                            switch(which){
+                                case 0:
+                                    Share(position);
+                                    break;
+                                case 1:
+                                    if(loggedIn == false){
+                                        facebookLogin(position);
+                                    }else{
+                                        shareFacebook(position);
+
+                                    }
+                                    break;
+                            }
                         }
                     });
 
                     alertDialog.show();
 
                     return false;
-                }});
+                }
+            });
 
 
                 // Listview Group click listener
                 expListView.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener()
 
-                {
-                    @Override
-                    public boolean onGroupClick (ExpandableListView parent, View v,
-                    int groupPosition, long id){
-                    return false;
-                }
-                }
+                                                    {
+                                                        @Override
+                                                        public boolean onGroupClick(ExpandableListView parent, View v,
+                                                                                    int groupPosition, long id) {
+                                                            return false;
+                                                        }
+                                                    }
 
                 );
         // Listview Group expanded listener
                 expListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener()
 
-                {
-                    @Override
-                    public void onGroupExpand ( int groupPosition){
-                }
-                }
+                                                     {
+                                                         @Override
+                                                         public void onGroupExpand(int groupPosition) {
+                                                         }
+                                                     }
 
                 );
                 // Listview Group collasped listener
                 expListView.setOnGroupCollapseListener(new ExpandableListView.OnGroupCollapseListener()
 
-                {
-                    @Override
-                    public void onGroupCollapse ( int groupPosition){
-                }
-                }
+                                                       {
+                                                           @Override
+                                                           public void onGroupCollapse(int groupPosition) {
+                                                           }
+                                                       }
 
                 );
                 // Listview on child click listener
                 expListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener()
 
-                {
-                    @Override
-                    public boolean onChildClick (ExpandableListView parent, View v,
-                    int groupPosition, int childPosition, long id){
-                    return false;
-                }
-                }
+                                                    {
+                                                        @Override
+                                                        public boolean onChildClick(ExpandableListView parent, View v,
+                                                                                    int groupPosition, int childPosition, long id) {
+                                                            return false;
+                                                        }
+                                                    }
 
                 );
 
 
-                return rootView;
+        return rootView;
 
             }
 
         @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.refresh, menu);
+            inflater.inflate(R.menu.refresh, menu);
     }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        callbackManager.onActivityResult(requestCode, resultCode, data);
+
+    }
+    private void updateWithToken(AccessToken currentAccessToken) {
+        if (currentAccessToken != null) {
+            loggedIn = true;
+        }
+    }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -229,16 +275,80 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             return true;
         }else if (id==R.id.action_share) {
 
-                 ShareContent linkContent = new ShareLinkContent.Builder()
-                         .setContentTitle("Hello Facebook")
-                         .setContentDescription("TEST")
-                         .setContentUrl(Uri.parse("https://www.google.com"))
-                         .build();
-                 shareDialog.show(linkContent);
+
                  return true;
              }
+
         return super.onOptionsItemSelected(item);
+}
+
+    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
+    public void facebookLogin(final int position){
+        final AlertDialog alertDialog = new AlertDialog.Builder(getActivity()).create();
+        LayoutInflater inflater = getActivity().getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.facebook_login, null);
+        alertDialog.setView(convertView);
+        loginButton = (LoginButton)convertView.findViewById(R.id.login_button);
+        loginButton.setPublishPermissions("publish_actions");
+        loginButton.setFragment(this);
+        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                token = loginResult.getAccessToken().getToken();
+                Toast.makeText(context, "login success", Toast.LENGTH_SHORT).show();
+                shareFacebook(position);
+
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(getActivity(), "login canceled", Toast.LENGTH_SHORT).show();
+
+            }
+
+            @Override
+            public void onError(FacebookException e) {
+                Toast.makeText(getActivity(), "login error", Toast.LENGTH_SHORT).show();
+
+            }
+
+        });
+
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog.dismiss();
+            }
+        });
+        alertDialog.show();
     }
+
+    public void shareFacebook(int position){
+        match_list=match_data.getMatches().get(position);
+        String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
+                "\n" + match_list.getMatchStatus();
+
+    GraphRequest request = null;
+    try {
+        request = GraphRequest.newPostRequest(
+                EPLApplication.accessToken,
+                "/feed",
+                new JSONObject("{\"message\":\""+match_result+"\",\"access_token\":\"" + token + "\"}"),
+                new GraphRequest.Callback() {
+                    @Override
+                    public void onCompleted(GraphResponse response) {
+                        // Insert your code here
+                        Toast.makeText(getContext(), "shareFacebook", Toast.LENGTH_SHORT).show();
+
+                    }
+                });
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+    request.executeAsync();
+
+
+}
 
     public void updateMatches() {
 
@@ -273,6 +383,8 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         shareIntent.putExtra(Intent.EXTRA_TEXT, match_result);
         startActivity(Intent.createChooser(shareIntent, "Share Matches Results"));
     }
+
+
     private void createConnection(){
 
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());

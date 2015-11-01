@@ -11,8 +11,6 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.facebook.drawee.backends.pipeline.Fresco;
-
 import epl.app.net.basalamah.malik.epl_1.Adapters.ViewPagerAdapter;
 import epl.app.net.basalamah.malik.epl_1.Fragments.FixtureFragment;
 import epl.app.net.basalamah.malik.epl_1.Fragments.StandingFragment;
@@ -21,16 +19,22 @@ import epl.app.net.basalamah.malik.epl_1.Fragments.StandingFragment;
 public class MainActivity extends AppCompatActivity {
 
     private ViewPager viewPager;
+    private Toolbar toolbar;
+    private TabLayout tabLayout;
+    private int[] tabIcons = {
+            R.drawable.ic_grade,
+            R.drawable.ic_list
+    };
 
    @Override
    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-       Fresco.initialize(this);
+
        setContentView(R.layout.activity_main);
 
 
-       Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+       toolbar = (Toolbar) findViewById(R.id.toolbar);
        setSupportActionBar(toolbar);
        toolbar.setLogo(R.mipmap.ic_logo);
 
@@ -39,9 +43,15 @@ public class MainActivity extends AppCompatActivity {
        //mAdapter = new ViewPagerAdapter(getSupportFragmentManager());
        //viewPager.setAdapter(mAdapter);
        // Give the TabLayout the ViewPager
-       TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
+       tabLayout = (TabLayout) findViewById(R.id.tabs);
        tabLayout.setupWithViewPager(viewPager);
+       setupTabIcons();
    }
+
+    private void setupTabIcons() {
+        tabLayout.getTabAt(0).setIcon(tabIcons[0]);
+        tabLayout.getTabAt(1).setIcon(tabIcons[1]);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

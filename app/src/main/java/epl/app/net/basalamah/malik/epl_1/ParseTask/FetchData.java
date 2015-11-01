@@ -97,7 +97,6 @@ public class FetchData implements DataChangeListener {
                 @Override
                 public void done(ParseObject object, ParseException e) {
                     if (e == null) {
-                        // object will be your game score
                         final Date serverDataUpdate = object.getUpdatedAt();
 
                         if(ACTION.equals(AppConstants.STANDING)){
