@@ -66,5 +66,7 @@ public class AppConstants {
     final public static String DATA_EPL_STANDINGS_LAST_MODIFICATION_DATE_KEY  = "com.EPL.epl_standings.modificationDate";
 
     final public static int FACEBOOK_REQUEST_CODE = 64206;
+    final public static String FACEBOOK_TOKEN = "com.EPL.epl_fixtures.facebook.token";
+
 
 }

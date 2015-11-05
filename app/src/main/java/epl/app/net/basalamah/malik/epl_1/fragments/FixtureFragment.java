@@ -91,6 +91,7 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
     Boolean twitterLoggedIn = false;
     TwitterSession twitterSession;
     int facebookRequestCode;
+    private String facebookLoginToken;
 
     private BroadcastReceiver internet = new BroadcastReceiver() {
         @Override
@@ -343,15 +344,15 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 ResolveInfo info = (ResolveInfo) adapter.getItem(which);
-                if(info.activityInfo.packageName.contains("com.facebook.katana")) {
-                    if (facebookLoggedIn == false) {
+                if (info.activityInfo.packageName.contains("com.facebook.katana")) {
+                    if (facebookLoggedIn == true) {
                         facebookLogin(position);
-                    } else{
+                    } else {
                         shareFacebook(position);
                     }
-                }else if (info.activityInfo.name.contains("com.twitter.android.composer.ComposerActivity")) {
+                } else if (info.activityInfo.name.contains("com.twitter.android.composer.ComposerActivity")) {
 
-                    if (twitterLoggedIn == false) {
+                    if (twitterLoggedIn == true) {
                         twitterLogin(position);
                     } else {
                         shareTwitter(position);
@@ -425,6 +426,9 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             @Override
             public void onSuccess(LoginResult loginResult) {
                 Toast.makeText(context, "Login Success", Toast.LENGTH_SHORT).show();
+                facebookLoginToken = loginResult.getAccessToken().getToken();
+                editor.putString(AppConstants.FACEBOOK_TOKEN, facebookLoginToken);
+                editor.commit();
                 shareFacebook(position);
             }
 
@@ -454,12 +458,14 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
                 "\n" + match_list.getMatchStatus();
 
+        facebookLoginToken = sp.getString(AppConstants.FACEBOOK_TOKEN,facebookLoginToken);
+
         GraphRequest request = null;
         try {
             request = GraphRequest.newPostRequest(
                     EPLApplication.accessToken,
                     "/feed",
-                    new JSONObject("{\"message\":\""+match_result+"\",\"access_token\":\"" + EPLApplication.accessToken.getToken() + "\"}"),
+                    new JSONObject("{\"message\":\""+match_result+"\",\"access_token\":\"" + facebookLoginToken + "\"}"),
                     new GraphRequest.Callback() {
                         @Override
                         public void onCompleted(GraphResponse response) {
@@ -516,12 +522,14 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         statusesService.update(match_result, null, null, null, null, null, null, null, null, new Callback<Tweet>() {
             @Override
             public void success(Result<Tweet> result) {
-                Toast.makeText(context, "Shared Successfully ", Toast.LENGTH_SHORT).show();
+
+                Toast.makeText(context, "Shared Successfully ", Toast.LENGTH_LONG).show();
+
             }
 
             @Override
             public void failure(TwitterException e) {
-                Toast.makeText(context, "Shared Failed ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Shared Failed ", Toast.LENGTH_LONG).show();
             }
         });
 
