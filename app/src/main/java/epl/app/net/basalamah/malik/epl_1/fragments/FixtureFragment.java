@@ -1,6 +1,5 @@
 package epl.app.net.basalamah.malik.epl_1.Fragments;
 
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,9 +7,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -39,6 +38,14 @@ import com.facebook.login.widget.LoginButton;
 import com.facebook.share.widget.ShareDialog;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.twitter.sdk.android.core.Callback;
+import com.twitter.sdk.android.core.Result;
+import com.twitter.sdk.android.core.TwitterAuthConfig;
+import com.twitter.sdk.android.core.TwitterCore;
+import com.twitter.sdk.android.core.TwitterException;
+import com.twitter.sdk.android.core.TwitterSession;
+import com.twitter.sdk.android.core.identity.TwitterLoginButton;
+import com.twitter.sdk.android.tweetcomposer.TweetComposer;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -56,6 +63,9 @@ import epl.app.net.basalamah.malik.epl_1.MatchData.MatchData;
 import epl.app.net.basalamah.malik.epl_1.MatchData.MatchEvent;
 import epl.app.net.basalamah.malik.epl_1.ParseTask.FetchData;
 import epl.app.net.basalamah.malik.epl_1.R;
+import epl.app.net.basalamah.malik.epl_1.ShareIntentListAdapter;
+import retrofit.Response;
+import retrofit.Retrofit;
 
 
 public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener{
@@ -72,11 +82,15 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
     List<Match> listDataHeader = new ArrayList<>();
     HashMap<Match, List<MatchEvent>> listDataChild = new HashMap<>();
     ShareDialog shareDialog;
-    private LoginButton loginButton;
-    private CallbackManager callbackManager;
-    String token;
+    LoginButton facebookLoginButton;
+    TwitterLoginButton twitterLoginButton;
+    CallbackManager callbackManager;
+    //String match_list;
     AccessTokenTracker accessTokenTracker;
-    Boolean loggedIn = false;
+    Boolean facebookLoggedIn = false;
+    Boolean twitterLoggedIn = false;
+    TwitterSession twitterSession;
+    int facebookRequestCode;
 
     private BroadcastReceiver internet = new BroadcastReceiver() {
         @Override
@@ -94,15 +108,24 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         setHasOptionsMenu(true);
         context = getActivity().getApplicationContext();
         shareDialog = new ShareDialog(this);
+        twitterSession = TwitterCore.getInstance().getSessionManager().getActiveSession();
         callbackManager = CallbackManager.Factory.create();
 
         accessTokenTracker = new AccessTokenTracker() {
             @Override
             protected void onCurrentAccessTokenChanged(AccessToken oldAccessToken, AccessToken newAccessToken) {
-                updateWithToken(newAccessToken);
+                    updateWithToken(newAccessToken);
+
             }
         };
+
         updateWithToken(AccessToken.getCurrentAccessToken());
+
+
+        if(twitterSession != null){
+            twitterLoggedIn = true;
+        }
+
     }
 
     @Override
@@ -153,12 +176,12 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             expListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-                    String names[] = {"Share","Share on Facebook"};
+                    String names[] = {"Share"};
                     AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
                     LayoutInflater inflater = getActivity().getLayoutInflater();
                     View convertView = (View) inflater.inflate(android.R.layout.simple_list_item_1, null);
                     alertDialog.setView(convertView);
-                    alertDialog.setTitle("List");
+                    alertDialog.setTitle("Select");
                     ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, R.layout.dialog_list_text, names);
                     alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                         @Override
@@ -174,14 +197,6 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
                             switch(which){
                                 case 0:
                                     Share(position);
-                                    break;
-                                case 1:
-                                    if(loggedIn == false){
-                                        facebookLogin(position);
-                                    }else{
-                                        shareFacebook(position);
-
-                                    }
                                     break;
                             }
                         }
@@ -251,12 +266,24 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        callbackManager.onActivityResult(requestCode, resultCode, data);
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch(requestCode) {
+            case AppConstants.FACEBOOK_REQUEST_CODE:
+                callbackManager.onActivityResult(requestCode, resultCode, data);
+                break;
+
+            case TwitterAuthConfig.DEFAULT_AUTH_REQUEST_CODE:
+                twitterLoginButton.onActivityResult(requestCode,resultCode,data);
+                break;
+        }
 
     }
+
+
     private void updateWithToken(AccessToken currentAccessToken) {
         if (currentAccessToken != null) {
-            loggedIn = true;
+            facebookLoggedIn = true;
         }
     }
 
@@ -274,80 +301,10 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             Toast.makeText(getContext(), "Refreshed", Toast.LENGTH_SHORT).show();
             return true;
         }else if (id==R.id.action_share) {
-
-
                  return true;
              }
 
         return super.onOptionsItemSelected(item);
-}
-
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
-    public void facebookLogin(final int position){
-        final AlertDialog alertDialog = new AlertDialog.Builder(getActivity()).create();
-        LayoutInflater inflater = getActivity().getLayoutInflater();
-        View convertView = (View) inflater.inflate(R.layout.facebook_login, null);
-        alertDialog.setView(convertView);
-        loginButton = (LoginButton)convertView.findViewById(R.id.login_button);
-        loginButton.setPublishPermissions("publish_actions");
-        loginButton.setFragment(this);
-        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
-            @Override
-            public void onSuccess(LoginResult loginResult) {
-                token = loginResult.getAccessToken().getToken();
-                Toast.makeText(context, "login success", Toast.LENGTH_SHORT).show();
-                shareFacebook(position);
-
-            }
-
-            @Override
-            public void onCancel() {
-                Toast.makeText(getActivity(), "login canceled", Toast.LENGTH_SHORT).show();
-
-            }
-
-            @Override
-            public void onError(FacebookException e) {
-                Toast.makeText(getActivity(), "login error", Toast.LENGTH_SHORT).show();
-
-            }
-
-        });
-
-        loginButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                alertDialog.dismiss();
-            }
-        });
-        alertDialog.show();
-    }
-
-    public void shareFacebook(int position){
-        match_list=match_data.getMatches().get(position);
-        String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
-                "\n" + match_list.getMatchStatus();
-
-    GraphRequest request = null;
-    try {
-        request = GraphRequest.newPostRequest(
-                EPLApplication.accessToken,
-                "/feed",
-                new JSONObject("{\"message\":\""+match_result+"\",\"access_token\":\"" + token + "\"}"),
-                new GraphRequest.Callback() {
-                    @Override
-                    public void onCompleted(GraphResponse response) {
-                        // Insert your code here
-                        Toast.makeText(getContext(), "shareFacebook", Toast.LENGTH_SHORT).show();
-
-                    }
-                });
-    } catch (JSONException e) {
-        e.printStackTrace();
-    }
-    request.executeAsync();
-
-
 }
 
     public void updateMatches() {
@@ -371,17 +328,46 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         }
 
     }
-    public void Share(int position){
-
-        Intent shareIntent = new Intent();
-        shareIntent.setAction(Intent.ACTION_SEND);
-        shareIntent.setType("text/plain");
+    public void Share(final int position){
 
         match_list=match_data.getMatches().get(position);
-        String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
+        final String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
                 "\n" + match_list.getMatchStatus();
-        shareIntent.putExtra(Intent.EXTRA_TEXT, match_result);
-        startActivity(Intent.createChooser(shareIntent, "Share Matches Results"));
+
+        Intent sendIntent = new Intent(android.content.Intent.ACTION_SEND);
+        sendIntent.setType("text/plain");
+        List activities = context.getPackageManager().queryIntentActivities(sendIntent, 0);
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setTitle("Share with...");
+        final ShareIntentListAdapter adapter = new ShareIntentListAdapter(getActivity(), R.layout.social_share,activities.toArray());
+        builder.setAdapter(adapter, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                ResolveInfo info = (ResolveInfo) adapter.getItem(which);
+                if(info.activityInfo.packageName.contains("com.facebook.katana")) {
+                    if (facebookLoggedIn == true) {
+                        facebookLogin(position);
+                    } else{
+                        shareFacebook(position);
+                    }
+                }else if (info.activityInfo.name.contains("com.twitter.android.composer.ComposerActivity")) {
+
+                    if (twitterLoggedIn == true) {
+                        twitterLogin(position);
+                    } else {
+                        shareTwitter(position);
+                    }
+
+                } else {
+                    Intent intent = new Intent(android.content.Intent.ACTION_SEND);
+                    intent.setClassName(info.activityInfo.packageName, info.activityInfo.name);
+                    intent.setType("text/plain");
+                    intent.putExtra(Intent.EXTRA_TEXT, match_result);
+                    (getContext()).startActivity(intent);
+                }
+            }
+        });
+        builder.create().show();
     }
 
 
@@ -392,9 +378,7 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         alertDialog.setTitle(context.getResources().getString(R.string.internet_settings));
         // Setting Dialog Message
         alertDialog.setMessage(context.getResources().getString(R.string.internet_state));
-        // Internet Setting Icon to Dialog
-        //alertDialog.setIcon(icon);
-        // On pressing Settings button
+
         alertDialog.setPositiveButton(context.getResources().getString(R.string.ok), new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
@@ -409,6 +393,7 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
     @Override
     public void onDestroy() {
         super.onDestroy();
+        accessTokenTracker.stopTracking();
         try {
             context.unregisterReceiver(this.internet);
         }catch (IllegalArgumentException e){
@@ -427,7 +412,119 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         return match_data;
     }
 
+    public void facebookLogin(final int position){
+        final AlertDialog alertDialog = new AlertDialog.Builder(getActivity()).create();
+        LayoutInflater inflater = getActivity().getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.facebook_login, null);
+        alertDialog.setView(convertView);
+        facebookLoginButton = (LoginButton)convertView.findViewById(R.id.login_button);
+        facebookLoginButton.setPublishPermissions("publish_actions");
+        facebookRequestCode = facebookLoginButton.getRequestCode();
+        facebookLoginButton.setFragment(this);
+        facebookLoginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                Toast.makeText(context, "Login Success", Toast.LENGTH_SHORT).show();
+                shareFacebook(position);
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(context, "Login Canceled", Toast.LENGTH_SHORT).show();
+
+            }
+
+            @Override
+            public void onError(FacebookException e) {
+                Toast.makeText(context, "Login Error", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        facebookLoginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog.dismiss();
+            }
+        });
+        alertDialog.show();
+    }
+
+    public void shareFacebook(int position){
+        match_list=match_data.getMatches().get(position);
+        String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
+                "\n" + match_list.getMatchStatus();
+
+        GraphRequest request = null;
+        try {
+            request = GraphRequest.newPostRequest(
+                    EPLApplication.accessToken,
+                    "/feed",
+                    new JSONObject("{\"message\":\""+match_result+"\",\"access_token\":\"" + EPLApplication.accessToken.getToken() + "\"}"),
+                    new GraphRequest.Callback() {
+                        @Override
+                        public void onCompleted(GraphResponse response) {
+                            // Insert your code here
+                            Toast.makeText(context, "Successfully Shared", Toast.LENGTH_SHORT).show();
+
+                        }
+                    });
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        request.executeAsync();
+    }
+
+    public void twitterLogin(final int position){
+        final AlertDialog alertDialog = new AlertDialog.Builder(getActivity()).create();
+        LayoutInflater inflater = getActivity().getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.twitter_login, null);
+        alertDialog.setView(convertView);
+        twitterLoginButton = (TwitterLoginButton) convertView.findViewById(R.id.login_button);
+        twitterLoginButton.setCallback(new Callback<TwitterSession>() {
+            @Override
+            public void success(Result<TwitterSession> result) {
+                twitterSession = result.data;
+                Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show();
+                shareTwitter(position);
+            }
+
+            @Override
+            public void failure(TwitterException e) {
+                Toast.makeText(context, "Login Failed ", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onResponse(Response<TwitterSession> response, Retrofit retrofit) {
+                Toast.makeText(context, "++", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Toast.makeText(context, "--", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        twitterLoginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog.dismiss();
+            }
+        });
+        alertDialog.show();
+
+
+    }
+
+
+    public void shareTwitter(int position){
+        match_list=match_data.getMatches().get(position);
+        final String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
+                "\n" + match_list.getMatchStatus();
+
+          TweetComposer.Builder builder = new TweetComposer.Builder(getActivity())
+                .text(match_result);
+                builder.show();
+
+    }
+
 }
-
-
-
