@@ -38,6 +38,7 @@ import com.facebook.login.widget.LoginButton;
 import com.facebook.share.widget.ShareDialog;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.twitter.sdk.android.Twitter;
 import com.twitter.sdk.android.core.Callback;
 import com.twitter.sdk.android.core.Result;
 import com.twitter.sdk.android.core.TwitterAuthConfig;
@@ -45,7 +46,8 @@ import com.twitter.sdk.android.core.TwitterCore;
 import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
 import com.twitter.sdk.android.core.identity.TwitterLoginButton;
-import com.twitter.sdk.android.tweetcomposer.TweetComposer;
+import com.twitter.sdk.android.core.models.Tweet;
+import com.twitter.sdk.android.core.services.StatusesService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -64,8 +66,6 @@ import epl.app.net.basalamah.malik.epl_1.MatchData.MatchEvent;
 import epl.app.net.basalamah.malik.epl_1.ParseTask.FetchData;
 import epl.app.net.basalamah.malik.epl_1.R;
 import epl.app.net.basalamah.malik.epl_1.ShareIntentListAdapter;
-import retrofit.Response;
-import retrofit.Retrofit;
 
 
 public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener{
@@ -324,10 +324,9 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             matchTask.PrepareFixture(match);
             swipeRefreshLayout.setRefreshing(false);
             match_data = matchTask.match_data;
-
         }
-
     }
+
     public void Share(final int position){
 
         match_list=match_data.getMatches().get(position);
@@ -345,14 +344,14 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             public void onClick(DialogInterface dialog, int which) {
                 ResolveInfo info = (ResolveInfo) adapter.getItem(which);
                 if(info.activityInfo.packageName.contains("com.facebook.katana")) {
-                    if (facebookLoggedIn == true) {
+                    if (facebookLoggedIn == false) {
                         facebookLogin(position);
                     } else{
                         shareFacebook(position);
                     }
                 }else if (info.activityInfo.name.contains("com.twitter.android.composer.ComposerActivity")) {
 
-                    if (twitterLoggedIn == true) {
+                    if (twitterLoggedIn == false) {
                         twitterLogin(position);
                     } else {
                         shareTwitter(position);
@@ -422,6 +421,7 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         facebookRequestCode = facebookLoginButton.getRequestCode();
         facebookLoginButton.setFragment(this);
         facebookLoginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+
             @Override
             public void onSuccess(LoginResult loginResult) {
                 Toast.makeText(context, "Login Success", Toast.LENGTH_SHORT).show();
@@ -484,24 +484,15 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
             @Override
             public void success(Result<TwitterSession> result) {
                 twitterSession = result.data;
-                Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity().getApplicationContext(), "Login Successful", Toast.LENGTH_SHORT).show();
                 shareTwitter(position);
             }
 
             @Override
             public void failure(TwitterException e) {
-                Toast.makeText(context, "Login Failed ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity().getApplicationContext(), "Login Failed ", Toast.LENGTH_SHORT).show();
             }
 
-            @Override
-            public void onResponse(Response<TwitterSession> response, Retrofit retrofit) {
-                Toast.makeText(context, "++", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                Toast.makeText(context, "--", Toast.LENGTH_SHORT).show();
-            }
         });
 
         twitterLoginButton.setOnClickListener(new View.OnClickListener() {
@@ -512,7 +503,6 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         });
         alertDialog.show();
 
-
     }
 
 
@@ -521,9 +511,23 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
         final String match_result = match_list.getMatchLocalteamName()+" (" + match_list.getMatchLocalteamScore() + ") v.s (" + match_list.getMatchVisitorteamScore() + ") "+ match_list.getMatchVisitorteamName()+
                 "\n" + match_list.getMatchStatus();
 
-          TweetComposer.Builder builder = new TweetComposer.Builder(getActivity())
+
+        StatusesService statusesService = Twitter.getApiClient(twitterSession).getStatusesService();
+        statusesService.update(match_result, null, null, null, null, null, null, null, null, new Callback<Tweet>() {
+            @Override
+            public void success(Result<Tweet> result) {
+                Toast.makeText(context, "Shared Successfully ", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void failure(TwitterException e) {
+                Toast.makeText(context, "Shared Failed ", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+/*          TweetComposer.Builder builder = new TweetComposer.Builder(getActivity())
                 .text(match_result);
-                builder.show();
+                builder.show();*/
 
     }
 
