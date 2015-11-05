@@ -62,6 +62,12 @@
             android:name="com.facebook.FacebookContentProvider"
             android:exported="true"/>
 
+        <meta-data
+            android:name="io.fabric.ApiKey"
+            android:value="9ed1a8c5c8ed52ac0bef12cb4016300a31583651" />
+
+        <activity android:name="com.twitter.sdk.android.core.identity.OAuthActivity" />
+
     </application>
 
 

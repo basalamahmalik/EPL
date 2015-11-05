@@ -63,6 +63,7 @@ public class FetchData implements DataChangeListener {
     private SharedPreferences.Editor editor;
     Date localUpdate;
 
+
     public FetchData(){}
 
 
@@ -317,45 +318,3 @@ public class FetchData implements DataChangeListener {
         return c2.after(c1);
     }
 }
-
-
-
-/*    public void Connection(String ACTION){
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(AppConstants.BASE_URL)
-                .addConverterFactory(JacksonConverterFactory.create())
-                .build();
-        API standing = retrofit.create(API.class);
-
-        if(ACTION == AppConstants.FIXTURE){
-            Call<MatchData> call = standing.getFixture(ACTION, AppConstants.API_KEY, AppConstants.COMP_ID, AppConstants.From_Date,AppConstants.To_Date);
-            call.enqueue(new Callback<MatchData>() {
-                @Override
-                public void onResponse(Response<MatchData> response, Retrofit retrofit) {
-                    match_data = response.body();
-                    PrepareFixture();
-                }
-                @Override
-                public void onFailure(Throwable t) {
-                    // IP or No Data in Server...
-                    Failure();
-                }
-            });
-        }else{
-            Call<Standing> call = standing.getStanding(ACTION,AppConstants.API_KEY,AppConstants.COMP_ID);
-            call.enqueue(new Callback<Standing>() {
-                @Override
-                public void onResponse(Response<Standing> response, Retrofit retrofit) {
-                    standing_data = response.body();
-                    PrepareStanding();
-                }
-
-                @Override
-                public void onFailure(Throwable t) {
-                    // IP or No Data in Server...
-                    Failure();
-
-                }
-            });
-        }
-    }*/

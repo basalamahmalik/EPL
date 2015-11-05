@@ -1,10 +1,12 @@
 package epl.app.net.basalamah.malik.epl_1;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -18,6 +20,7 @@ import epl.app.net.basalamah.malik.epl_1.Fragments.StandingFragment;
 
 public class MainActivity extends AppCompatActivity {
 
+    private ViewPagerAdapter adapter;
     private ViewPager viewPager;
     private Toolbar toolbar;
     private TabLayout tabLayout;
@@ -25,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.ic_grade,
             R.drawable.ic_list
     };
+
 
    @Override
    protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void setupViewPager(ViewPager viewPager) {
-        ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
+        adapter = new ViewPagerAdapter(getSupportFragmentManager());
         adapter.addFragment(new FixtureFragment(),  this.getResources().getString(R.string.fixture));
         adapter.addFragment(new StandingFragment(), this.getResources().getString(R.string.standing));
         viewPager.setAdapter(adapter);
@@ -114,5 +118,13 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Fragment fragment = adapter.getItem(0);
+        int i=5;
+        if (fragment != null) {
+            fragment.onActivityResult(requestCode, resultCode, data);
+        }
+    }
 }
