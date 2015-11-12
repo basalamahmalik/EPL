@@ -65,7 +65,7 @@ import epl.app.net.basalamah.malik.epl_1.MatchData.MatchData;
 import epl.app.net.basalamah.malik.epl_1.MatchData.MatchEvent;
 import epl.app.net.basalamah.malik.epl_1.ParseTask.FetchData;
 import epl.app.net.basalamah.malik.epl_1.R;
-import epl.app.net.basalamah.malik.epl_1.ShareIntentListAdapter;
+import epl.app.net.basalamah.malik.epl_1.Adapters.ShareIntentListAdapter;
 
 
 public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener{
@@ -148,7 +148,6 @@ public class FixtureFragment extends Fragment implements SwipeRefreshLayout.OnRe
                 e.printStackTrace();
             }
             listDataHeader = match_data.getMatches();
-
             for (int i = 0; i < listDataHeader.size(); i++) {
                 listDataChild.put(listDataHeader.get(i), listDataHeader.get(i).getMatchEvents());
             }

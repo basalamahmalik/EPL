@@ -1,4 +1,4 @@
-package epl.app.net.basalamah.malik.epl_1;
+package epl.app.net.basalamah.malik.epl_1.Adapters;
 
 import android.app.Activity;
 import android.content.pm.ResolveInfo;
@@ -8,6 +8,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import epl.app.net.basalamah.malik.epl_1.R;
 
 public class ShareIntentListAdapter extends ArrayAdapter
 {

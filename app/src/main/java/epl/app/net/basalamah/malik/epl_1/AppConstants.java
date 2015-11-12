@@ -68,5 +68,6 @@ public class AppConstants {
     final public static int FACEBOOK_REQUEST_CODE = 64206;
     final public static String FACEBOOK_TOKEN = "com.EPL.epl_fixtures.facebook.token";
 
+    final public static String FACEBOOK_ALBUM_ID = "511438142199592";
 
 }

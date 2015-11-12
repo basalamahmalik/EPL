@@ -14,6 +14,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import epl.app.net.basalamah.malik.epl_1.Adapters.ViewPagerAdapter;
+import epl.app.net.basalamah.malik.epl_1.Fragments.AlbumFragment;
 import epl.app.net.basalamah.malik.epl_1.Fragments.FixtureFragment;
 import epl.app.net.basalamah.malik.epl_1.Fragments.StandingFragment;
 
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
        // Give the TabLayout the ViewPager
        tabLayout = (TabLayout) findViewById(R.id.tabs);
        tabLayout.setupWithViewPager(viewPager);
-       setupTabIcons();
+       //setupTabIcons();
    }
 
     private void setupTabIcons() {
@@ -87,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         adapter = new ViewPagerAdapter(getSupportFragmentManager());
         adapter.addFragment(new FixtureFragment(),  this.getResources().getString(R.string.fixture));
         adapter.addFragment(new StandingFragment(), this.getResources().getString(R.string.standing));
+        adapter.addFragment(new AlbumFragment(), this.getResources().getString(R.string.album));
         viewPager.setAdapter(adapter);
     }
 

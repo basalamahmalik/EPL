@@ -12,6 +12,7 @@
     <string name="internet_state">You should enable Internet connection</string>
     <string name="fixture">Fixture</string>
     <string name="standing">Standing</string>
+    <string name="album">Album</string>
     <string name="facebook_app_id">1630514200565041</string>
 
 </resources>
